@@ -17,7 +17,7 @@ const navItems = [
 
 export default function BottomNavigation({ activeTab = 'Home' }: BottomNavigationProps) {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pb-6 px-4">
+    <nav className="fixed bottom-0 left-0 right-0 z-[100] flex justify-center pb-6 px-4">
       <div 
         className="flex items-center justify-around rounded-full border border-black/[0.11] bg-white/[0.81] shadow-[0px_1.2px_4.9px_0.6px_rgba(0,0,0,0.04)] backdrop-blur-[4.4px]"
         style={{ 

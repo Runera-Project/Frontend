@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
 
 :root {
   --background: #f5f7fa;
@@ -20,4 +21,13 @@ body {
 
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Leaflet map customization */
+.leaflet-container {
+  font-family: inherit;
+}
+
+.leaflet-control-attribution {
+  display: none !important;
 }

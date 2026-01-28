@@ -4,6 +4,17 @@ import { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import BottomNavigation from '@/components/BottomNavigation';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
+
+// Dynamic import to avoid SSR issues with Leaflet
+const MapView = dynamic(() => import('@/components/record/MapView'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-full items-center justify-center bg-gray-100">
+      <div className="text-gray-500">Loading map...</div>
+    </div>
+  ),
+});
 
 type RecordState = 'idle' | 'recording' | 'paused';
 
@@ -13,7 +24,72 @@ export default function RecordPage() {
   const [timer, setTimer] = useState(0);
   const [distance, setDistance] = useState(0);
   const [pace, setPace] = useState('0:00');
-  const [showMap, setShowMap] = useState(true); // Default show map on idle
+  const [showMap, setShowMap] = useState(true);
+  
+  // GPS tracking states
+  const [currentPosition, setCurrentPosition] = useState<[number, number]>([-7.7956, 110.3695]); // Default: Yogyakarta
+  const [route, setRoute] = useState<[number, number][]>([]);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [watchId, setWatchId] = useState<number | null>(null);
+
+  // Request location permission on mount
+  useEffect(() => {
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const pos: [number, number] = [position.coords.latitude, position.coords.longitude];
+          setCurrentPosition(pos);
+          setLocationError(null);
+        },
+        (error) => {
+          console.error('Location error:', error);
+          setLocationError('Please enable location access');
+        },
+        { enableHighAccuracy: true }
+      );
+    } else {
+      setLocationError('Geolocation not supported');
+    }
+  }, []);
+
+  // GPS tracking during recording
+  useEffect(() => {
+    if (recordState === 'recording' && 'geolocation' in navigator) {
+      const id = navigator.geolocation.watchPosition(
+        (position) => {
+          const newPos: [number, number] = [position.coords.latitude, position.coords.longitude];
+          setCurrentPosition(newPos);
+          
+          // Add to route
+          setRoute((prev) => {
+            const newRoute = [...prev, newPos];
+            
+            // Calculate distance from last point
+            if (prev.length > 0) {
+              const lastPos = prev[prev.length - 1];
+              const dist = calculateDistance(lastPos[0], lastPos[1], newPos[0], newPos[1]);
+              setDistance((prevDist) => prevDist + dist);
+            }
+            
+            return newRoute;
+          });
+        },
+        (error) => {
+          console.error('Tracking error:', error);
+        },
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
+      );
+      
+      setWatchId(id);
+      
+      return () => {
+        if (id) navigator.geolocation.clearWatch(id);
+      };
+    } else if (watchId) {
+      navigator.geolocation.clearWatch(watchId);
+      setWatchId(null);
+    }
+  }, [recordState]);
 
   // Timer effect
   useEffect(() => {
@@ -21,7 +97,6 @@ export default function RecordPage() {
     if (recordState === 'recording') {
       interval = setInterval(() => {
         setTimer((prev) => prev + 1);
-        setDistance((prev) => prev + 0.0008);
       }, 1000);
     }
     return () => clearInterval(interval);
@@ -38,9 +113,26 @@ export default function RecordPage() {
     }
   }, [distance, timer]);
 
+  // Calculate distance between two GPS coordinates (Haversine formula)
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371; // Earth's radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
   const handleStart = () => {
     setRecordState('recording');
-    setShowMap(true); // Always show map when recording
+    setShowMap(true);
+    // Initialize route with current position
+    setRoute([currentPosition]);
+    setDistance(0);
+    setTimer(0);
   };
 
   const handlePause = () => {
@@ -71,61 +163,58 @@ export default function RecordPage() {
         {/* Idle State with Map (Default) */}
         {isIdle && showMap && (
           <>
-            {/* Full Map - Fullscreen */}
-            <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-200">
-              {/* Mock Map Background - Full Screen */}
-              <div className="absolute inset-0">
-                <svg className="h-full w-full" viewBox="0 0 400 600" preserveAspectRatio="xMidYMid slice">
-                  <defs>
-                    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#999" strokeWidth="0.5"/>
-                    </pattern>
-                  </defs>
-                  <rect width="400" height="600" fill="url(#grid)" />
-                  <text x="50" y="150" fontSize="10" fill="#666" opacity="0.6">Jl. Nusantara</text>
-                  <text x="200" y="300" fontSize="10" fill="#666" opacity="0.6">Quest House</text>
-                  <text x="100" y="450" fontSize="10" fill="#666" opacity="0.6">Jl. Taman Bungur</text>
-                </svg>
-              </div>
+            {/* Full Map - Stop before bottom navigation - Behind everything */}
+            <div className="absolute inset-0 pb-28 z-0">
+              {locationError ? (
+                <div className="flex h-full items-center justify-center bg-gray-100">
+                  <div className="text-center">
+                    <p className="text-red-500 font-medium">{locationError}</p>
+                    <p className="text-sm text-gray-500 mt-2">Enable location to use tracking</p>
+                  </div>
+                </div>
+              ) : (
+                <MapView center={currentPosition} route={route} isRecording={false} />
+              )}
+            </div>
 
-              {/* Stats Overlay on Map - Much Lower position */}
-              <div className="absolute bottom-32 left-4 right-4">
-                <div className="rounded-2xl bg-white/95 p-5 shadow-lg backdrop-blur-sm">
-                  {/* Collapse Button at Top of Card */}
-                  <div className="mb-3 flex justify-center">
-                    <button
-                      onClick={() => setShowMap(false)}
-                      className="flex items-center justify-center text-blue-500"
-                    >
-                      <ChevronDown className="h-5 w-5" />
-                    </button>
+            {/* Stats Overlay on Map - Above map layer */}
+            <div className="absolute bottom-32 left-4 right-4 z-50">
+              <div className="rounded-2xl bg-white/95 p-5 shadow-lg backdrop-blur-sm">
+                {/* Collapse Button at Top of Card */}
+                <div className="mb-3 flex justify-center">
+                  <button
+                    onClick={() => setShowMap(false)}
+                    className="flex items-center justify-center text-blue-500"
+                  >
+                    <ChevronDown className="h-5 w-5" />
+                  </button>
+                </div>
+                
+                <div className="mb-5 grid grid-cols-3 gap-2 text-center">
+                  <div>
+                    <div className="text-2xl font-bold text-gray-900">00:00</div>
+                    <div className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Time</div>
                   </div>
-                  
-                  <div className="mb-5 grid grid-cols-3 gap-2 text-center">
-                    <div>
-                      <div className="text-2xl font-bold text-gray-900">00:00</div>
-                      <div className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Time</div>
-                    </div>
-                    <div>
-                      <div className="text-4xl font-bold text-gray-900">0</div>
-                      <div className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Distance (KM)</div>
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold text-gray-900">--</div>
-                      <div className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Speed (KM/H)</div>
-                    </div>
+                  <div>
+                    <div className="text-4xl font-bold text-gray-900">0</div>
+                    <div className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Distance (KM)</div>
                   </div>
-                  {/* Play Button inside card */}
-                  <div className="flex justify-center">
-                    <button
-                      onClick={handleStart}
-                      className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-blue-500 shadow-lg transition-all hover:scale-105"
-                    >
-                      <svg className="h-8 w-8 text-white" fill="white" viewBox="0 0 24 24">
-                        <path d="M8 5v14l11-7z" />
-                      </svg>
-                    </button>
+                  <div>
+                    <div className="text-2xl font-bold text-gray-900">--</div>
+                    <div className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Speed (KM/H)</div>
                   </div>
+                </div>
+                {/* Play Button inside card */}
+                <div className="flex justify-center">
+                  <button
+                    onClick={handleStart}
+                    disabled={!!locationError}
+                    className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-blue-500 shadow-lg transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <svg className="h-8 w-8 text-white" fill="white" viewBox="0 0 24 24">
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                  </button>
                 </div>
               </div>
             </div>
@@ -184,47 +273,14 @@ export default function RecordPage() {
           <>
             {/* Map View */}
             {showMap && (
-              <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-200">
-                {/* Mock Map Background - Full Screen */}
-                <div className="absolute inset-0">
-                  <svg className="h-full w-full" viewBox="0 0 400 600" preserveAspectRatio="xMidYMid slice">
-                    <defs>
-                      <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                        <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#999" strokeWidth="0.5"/>
-                      </pattern>
-                    </defs>
-                    <rect width="400" height="600" fill="url(#grid)" />
-                    <text x="50" y="150" fontSize="10" fill="#666" opacity="0.6">Jl. Nusantara</text>
-                    <text x="200" y="300" fontSize="10" fill="#666" opacity="0.6">Quest House</text>
-                    <text x="100" y="450" fontSize="10" fill="#666" opacity="0.6">Jl. Taman Bungur</text>
-                  </svg>
+              <>
+                {/* Map Container - Stop before bottom navigation - Behind everything */}
+                <div className="absolute inset-0 pb-28 z-0">
+                  <MapView center={currentPosition} route={route} isRecording={isRecording} />
                 </div>
 
-                {/* Running Route - Full Screen */}
-                <svg className="absolute inset-0 h-full w-full" viewBox="0 0 400 600" preserveAspectRatio="xMidYMid slice">
-                  <path
-                    d="M 80 300 Q 120 220, 180 260 T 280 290 Q 320 320, 320 400 L 280 440 Q 240 470, 180 430 T 100 370 Q 80 340, 80 300"
-                    fill="none"
-                    stroke="#3B82F6"
-                    strokeWidth="5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className={isRecording ? 'animate-pulse' : ''}
-                  />
-                  <circle cx="80" cy="300" r="8" fill="#10B981" stroke="white" strokeWidth="3" />
-                  {isRecording && (
-                    <g>
-                      <circle cx="320" cy="400" r="10" fill="#3B82F6" opacity="0.3">
-                        <animate attributeName="r" from="10" to="20" dur="1.5s" repeatCount="indefinite" />
-                        <animate attributeName="opacity" from="0.3" to="0" dur="1.5s" repeatCount="indefinite" />
-                      </circle>
-                      <circle cx="320" cy="400" r="8" fill="#3B82F6" stroke="white" strokeWidth="3" />
-                    </g>
-                  )}
-                </svg>
-
-                {/* Stats Overlay on Map - Much Lower position */}
-                <div className="absolute bottom-32 left-4 right-4">
+                {/* Stats Overlay on Map - Above map layer */}
+                <div className="absolute bottom-32 left-4 right-4 z-50">
                   <div className="rounded-2xl bg-white/95 p-5 shadow-lg backdrop-blur-sm">
                     {/* Collapse Button at Top of Card */}
                     <div className="mb-3 flex justify-center">
@@ -242,12 +298,12 @@ export default function RecordPage() {
                         <div className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Time</div>
                       </div>
                       <div>
-                        <div className="text-4xl font-bold text-gray-900">{Math.floor(distance)}</div>
+                        <div className="text-4xl font-bold text-gray-900">{distance.toFixed(2)}</div>
                         <div className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Distance (KM)</div>
                       </div>
                       <div>
-                        <div className="text-2xl font-bold text-gray-900">--</div>
-                        <div className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Speed (KM/H)</div>
+                        <div className="text-2xl font-bold text-gray-900">{pace}</div>
+                        <div className="text-[10px] font-medium uppercase tracking-wide text-gray-400">Pace (MIN/KM)</div>
                       </div>
                     </div>
                     {/* Control Buttons inside card */}
@@ -275,7 +331,7 @@ export default function RecordPage() {
                     </div>
                   </div>
                 </div>
-              </div>
+              </>
             )}
 
             {/* Stats View (when map collapsed) */}
