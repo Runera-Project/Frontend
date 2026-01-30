@@ -120,7 +120,7 @@ export default function ProfilePage() {
                         lastActivityTimestamp: 0,
                       },
                       registeredAt: Date.now() / 1000,
-                      tokenId: 0n,
+                      tokenId: BigInt(0),
                     };
                     
                     console.log('Rendering ProfileIdentityCard with:', profileData);

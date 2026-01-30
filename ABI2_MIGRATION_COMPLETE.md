@@ -55,9 +55,9 @@ interface ProfileData {
 
 **Change**:
 ```typescript
-// OLD - Import from ABI folder
-import ProfileABI from '@/ABI/RuneraProfileDynamicNFTABI.json';
-import CosmeticABI from '@/ABI/RuneraCosmeticNFTABI.json';
+// ✅ SUDAH BENAR - Import from ABI2 folder
+import ProfileABI from '@/ABI2/RuneraProfileABI.json';
+import CosmeticABI from '@/ABI2/RuneraCosmeticNFTABI.json';
 // ...
 
 // NEW - Import from ABI2 folder

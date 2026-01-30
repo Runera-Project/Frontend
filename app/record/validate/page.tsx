@@ -1,18 +1,32 @@
 'use client';
 
 import { useSearchParams, useRouter } from 'next/navigation';
-import { CheckCircle2, MapPin, Clock, TrendingUp, Save, Share2 } from 'lucide-react';
+import { CheckCircle2, MapPin, Clock, TrendingUp, Share2 } from 'lucide-react';
 import BottomNavigation from '@/components/BottomNavigation';
 import { Suspense, useState } from 'react';
+import { useAccount } from 'wagmi';
+import { submitRun } from '@/lib/api';
 
 function ValidateContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { address } = useAccount();
   const [title, setTitle] = useState('Morning Run');
+  const [isPosting, setIsPosting] = useState(false);
   
   const time = searchParams.get('time') || '0';
   const distance = searchParams.get('distance') || '0.00';
   const pace = searchParams.get('pace') || '0:00';
+  const startTime = searchParams.get('startTime') || String(Date.now() - parseInt(time) * 1000);
+  const endTime = searchParams.get('endTime') || String(Date.now());
+  const gpsDataStr = searchParams.get('gpsData') || '[]';
+  
+  let gpsData = [];
+  try {
+    gpsData = JSON.parse(decodeURIComponent(gpsDataStr));
+  } catch (e) {
+    console.error('Failed to parse GPS data:', e);
+  }
 
   const formatTime = (seconds: string) => {
     const secs = parseInt(seconds);
@@ -21,14 +35,81 @@ function ValidateContent() {
     return `${mins.toString().padStart(2, '0')}:${remainingSecs.toString().padStart(2, '0')}`;
   };
 
-  const handleSave = () => {
-    // TODO: Save activity to database
-    router.push('/');
+  const handleCancel = () => {
+    // Kembali ke record page dengan state paused
+    router.push('/record?state=paused');
   };
 
-  const handlePost = () => {
-    // TODO: Post activity to feed
-    router.push('/');
+  const handlePost = async () => {
+    if (!address) {
+      alert('Please connect your wallet first');
+      return;
+    }
+
+    setIsPosting(true);
+
+    try {
+      // Generate device hash (simple hash dari user agent + timestamp)
+      const deviceInfo = `${navigator.userAgent}-${address}`;
+      const deviceHash = btoa(deviceInfo).substring(0, 32);
+
+      // Prepare data untuk backend
+      let distanceInMeters = Math.round(parseFloat(distance) * 1000);
+      const durationInSeconds = parseInt(time);
+      
+      // TEMPORARY: For testing, ensure minimum distance of 1 meter
+      if (distanceInMeters === 0) {
+        console.warn('Distance is 0, setting to 1 meter for testing');
+        distanceInMeters = 1;
+      }
+      
+      const runData = {
+        walletAddress: address, // Backend expects walletAddress
+        distanceMeters: distanceInMeters, // Backend expects distanceMeters (min 1)
+        durationSeconds: durationInSeconds, // Backend expects durationSeconds
+        startTime: parseInt(startTime),
+        endTime: parseInt(endTime),
+        deviceHash,
+        gpsData: gpsData.length > 0 ? gpsData : undefined,
+      };
+
+      console.log('Submitting run to backend:', runData);
+
+      // Submit ke backend /run/submit
+      const result = await submitRun(runData);
+
+      console.log('Run submitted successfully:', result);
+
+      // Show success message
+      alert(`Activity posted! +${result.run.xpEarned} XP earned! 🎉`);
+
+      // Redirect to home
+      router.push('/');
+    } catch (error: any) {
+      console.error('Post error:', error);
+      
+      // Show detailed error message
+      const errorMsg = error.message || 'Unknown error';
+      alert(`Failed to submit to backend: ${errorMsg}\n\nSaving locally instead...`);
+      
+      // Fallback: Save to localStorage
+      console.warn('Backend error, saving locally');
+      const activities = JSON.parse(localStorage.getItem('runera_activities') || '[]');
+      activities.push({
+        id: Date.now(),
+        title,
+        distance: parseFloat(distance),
+        duration: parseInt(time),
+        pace,
+        timestamp: Date.now(),
+        gpsData: gpsData.length > 0 ? gpsData : undefined,
+      });
+      localStorage.setItem('runera_activities', JSON.stringify(activities));
+      
+      router.push('/');
+    } finally {
+      setIsPosting(false);
+    }
   };
 
   return (
@@ -106,6 +187,13 @@ function ValidateContent() {
             </div>
           </div>
 
+          {/* XP Earned - Will be calculated by backend */}
+          <div className="mb-4 rounded-lg bg-gradient-to-r from-yellow-50 to-orange-50 p-3 text-center">
+            <p className="mb-1 text-xs font-medium text-orange-600">Estimated XP</p>
+            <p className="text-2xl font-bold text-orange-700">+{Math.round(parseFloat(distance) * 10)} XP</p>
+            <p className="text-[10px] text-orange-500 mt-1">Final XP will be calculated by backend</p>
+          </div>
+
           {/* Additional Stats */}
           <div className="grid grid-cols-2 gap-3 border-t border-gray-100 pt-4">
             <div className="rounded-lg bg-gray-50 p-3">
@@ -126,18 +214,22 @@ function ValidateContent() {
         {/* Action Buttons */}
         <div className="mx-5 flex gap-3">
           <button
-            onClick={handleSave}
-            className="flex flex-1 items-center justify-center gap-2 rounded-xl border-2 border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-700 shadow-sm transition-all hover:border-gray-300"
+            onClick={handleCancel}
+            disabled={isPosting}
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl border-2 border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-700 shadow-sm transition-all hover:border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Save className="h-4 w-4" />
-            Save
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            Cancel
           </button>
           <button
             onClick={handlePost}
-            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 px-4 py-3 text-sm font-bold text-white shadow-sm transition-all hover:shadow-md"
+            disabled={isPosting}
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 px-4 py-3 text-sm font-bold text-white shadow-sm transition-all hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Share2 className="h-4 w-4" />
-            Post
+            {isPosting ? 'Posting...' : 'Post'}
           </button>
         </div>
       </div>

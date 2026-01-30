@@ -1,8 +1,8 @@
 'use client';
 
-import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useReadContract, useWriteContract, useWaitForTransactionReceipt, usePublicClient } from 'wagmi';
 import { useAccount } from 'wagmi';
-import { CONTRACTS, ABIS } from '@/lib/contracts';
+import { CONTRACTS, ABIS, RARITY_COLORS } from '@/lib/contracts';
 import { useState, useEffect } from 'react';
 
 // Category enum matching smart contract
@@ -31,10 +31,15 @@ export interface CosmeticItem {
   equipped: boolean;
   gradient: string;
   price?: string; // For marketplace
+  // Contract fields
+  maxSupply?: number;
+  currentSupply?: number;
+  minTierRequired?: number;
 }
 
 export function useCosmetics() {
   const { address } = useAccount();
+  const publicClient = usePublicClient();
   const [cosmetics, setCosmetics] = useState<CosmeticItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -80,10 +85,109 @@ export function useCosmetics() {
   });
 
   useEffect(() => {
-    // For MVP, use dummy data
-    // In production, fetch from contract or backend
-    const dummyCosmetics: CosmeticItem[] = [
-      // Backgrounds
+    async function fetchCosmetics() {
+      // Cek apakah contract address valid
+      if (!CONTRACTS.CosmeticNFT || CONTRACTS.CosmeticNFT === '0x0000000000000000000000000000000000000000') {
+        console.warn('CosmeticNFT contract address not configured, using dummy data');
+        setCosmetics(getDummyCosmetics());
+        setIsLoading(false);
+        return;
+      }
+
+      if (!publicClient) {
+        console.warn('Public client not available, using dummy data');
+        setCosmetics(getDummyCosmetics());
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+
+      // Item IDs yang ada di contract (bisa didapat dari backend atau hardcode dulu)
+      // Untuk MVP, kita coba fetch item 1-10
+      const ITEM_IDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+      const items: CosmeticItem[] = [];
+
+      for (const itemId of ITEM_IDS) {
+        try {
+          // 1. Cek apakah item exists
+          const exists = await publicClient.readContract({
+            address: CONTRACTS.CosmeticNFT,
+            abi: ABIS.CosmeticNFT,
+            functionName: 'itemExists',
+            args: [BigInt(itemId)],
+          }) as boolean;
+
+          if (!exists) continue;
+
+          // 2. Ambil data item dari contract
+          const itemData = await publicClient.readContract({
+            address: CONTRACTS.CosmeticNFT,
+            abi: ABIS.CosmeticNFT,
+            functionName: 'getItem',
+            args: [BigInt(itemId)],
+          }) as any;
+
+          if (!itemData.exists) continue;
+
+          // 3. Cek kepemilikan user (jika ada address)
+          let owned = false;
+          if (address) {
+            const balance = await publicClient.readContract({
+              address: CONTRACTS.CosmeticNFT,
+              abi: ABIS.CosmeticNFT,
+              functionName: 'balanceOf',
+              args: [address, BigInt(itemId)],
+            }) as bigint;
+            owned = balance > BigInt(0);
+          }
+
+          // 4. Cek apakah item ini sedang di-equip
+          const equipped = 
+            (itemData.category === CosmeticCategory.FRAME && equippedFrame === BigInt(itemId)) ||
+            (itemData.category === CosmeticCategory.BACKGROUND && equippedBackground === BigInt(itemId)) ||
+            (itemData.category === CosmeticCategory.TITLE && equippedTitle === BigInt(itemId)) ||
+            (itemData.category === CosmeticCategory.BADGE && equippedBadge === BigInt(itemId));
+
+          // 5. Generate gradient berdasarkan rarity
+          const gradient = RARITY_COLORS[itemData.rarity as keyof typeof RARITY_COLORS] || 'from-gray-400 to-gray-600';
+
+          items.push({
+            itemId,
+            name: itemData.name,
+            category: itemData.category,
+            rarity: itemData.rarity,
+            owned,
+            equipped,
+            gradient,
+            maxSupply: Number(itemData.maxSupply),
+            currentSupply: Number(itemData.currentSupply),
+            minTierRequired: itemData.minTierRequired,
+          });
+        } catch (error) {
+          console.error(`Error fetching item ${itemId}:`, error);
+          // Skip item jika error
+        }
+      }
+
+      // Jika tidak ada item dari contract, gunakan dummy data sebagai fallback
+      if (items.length === 0) {
+        console.warn('No items found from contract, using dummy data');
+        setCosmetics(getDummyCosmetics());
+      } else {
+        console.log(`✅ Loaded ${items.length} cosmetic items from contract`);
+        setCosmetics(items);
+      }
+
+      setIsLoading(false);
+    }
+
+    fetchCosmetics();
+  }, [address, equippedFrame, equippedBackground, equippedTitle, equippedBadge, publicClient]);
+
+  // Helper function untuk dummy data
+  const getDummyCosmetics = (): CosmeticItem[] => {
+    return [
       {
         itemId: 1,
         name: 'Spacy Warp',
@@ -120,52 +224,8 @@ export function useCosmetics() {
         equipped: equippedBackground === BigInt(4),
         gradient: 'from-yellow-400 via-orange-500 to-red-600',
       },
-      {
-        itemId: 7,
-        name: 'Aurora Borealis',
-        category: CosmeticCategory.BACKGROUND,
-        rarity: CosmeticRarity.LEGENDARY,
-        owned: false,
-        equipped: false,
-        gradient: 'from-green-300 via-blue-400 to-purple-500',
-        price: '0.01 ETH',
-      },
-      // Frames
-      {
-        itemId: 5,
-        name: 'Neon Grid',
-        category: CosmeticCategory.FRAME,
-        rarity: CosmeticRarity.EPIC,
-        owned: false,
-        equipped: false,
-        gradient: 'from-green-400 via-cyan-500 to-blue-600',
-        price: '0.005 ETH',
-      },
-      {
-        itemId: 6,
-        name: 'Galaxy Ring',
-        category: CosmeticCategory.FRAME,
-        rarity: CosmeticRarity.LEGENDARY,
-        owned: false,
-        equipped: false,
-        gradient: 'from-purple-600 via-pink-600 to-red-600',
-        price: '0.02 ETH',
-      },
-      {
-        itemId: 8,
-        name: 'Cyber Punk',
-        category: CosmeticCategory.FRAME,
-        rarity: CosmeticRarity.EPIC,
-        owned: false,
-        equipped: false,
-        gradient: 'from-pink-500 via-purple-600 to-indigo-700',
-        price: '0.008 ETH',
-      },
     ];
-
-    setCosmetics(dummyCosmetics);
-    setIsLoading(false);
-  }, [equippedFrame, equippedBackground, equippedTitle, equippedBadge]);
+  };
 
   const handleEquip = async (category: CosmeticCategory, itemId: number) => {
     if (!address) return;

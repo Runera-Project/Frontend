@@ -2,6 +2,8 @@
 
 import { Lock, Trophy, Zap } from 'lucide-react';
 import type { Achievement } from '@/hooks/useAchievements';
+import { useClaimAchievement } from '@/hooks/useClaimAchievement';
+import { useState } from 'react';
 
 interface AchievementCardProps {
   achievement: Achievement;
@@ -28,6 +30,22 @@ export default function AchievementCard({ achievement, size = 'medium' }: Achiev
   const progress = Math.min((achievement.progress / achievement.total) * 100, 100);
   const tierGradient = TIER_COLORS[achievement.tier];
   const tierName = TIER_NAMES[achievement.tier];
+  const { claimAchievement, isLoading: isClaiming } = useClaimAchievement();
+  const [claimed, setClaimed] = useState(false);
+
+  const handleClaim = async () => {
+    try {
+      // TODO: Get actual eventId and metadataHash from achievement
+      const eventId = achievement.id; // Use achievement ID as eventId for now
+      const metadataHash = '0x0000000000000000000000000000000000000000000000000000000000000000'; // Placeholder
+      
+      await claimAchievement(eventId, achievement.tier, metadataHash);
+      setClaimed(true);
+      alert('Achievement claimed! NFT minted! 🎉');
+    } catch (error: any) {
+      alert(`Failed to claim: ${error.message}`);
+    }
+  };
 
   if (size === 'small') {
     return (
@@ -133,7 +151,19 @@ export default function AchievementCard({ achievement, size = 'medium' }: Achiev
               +{achievement.reward.xp} XP
             </span>
           </div>
-          {achievement.unlocked && achievement.unlockedAt && (
+          {achievement.unlocked && !claimed && (
+            <button
+              onClick={handleClaim}
+              disabled={isClaiming}
+              className="rounded-lg bg-white/20 px-3 py-1.5 text-xs font-bold text-white backdrop-blur-sm transition-all hover:bg-white/30 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isClaiming ? 'Claiming...' : 'Claim NFT'}
+            </button>
+          )}
+          {achievement.unlocked && claimed && (
+            <span className="text-xs text-white/80">✓ Claimed</span>
+          )}
+          {achievement.unlocked && !claimed && achievement.unlockedAt && (
             <span className="text-xs text-white/80">
               Unlocked {achievement.unlockedAt.toLocaleDateString()}
             </span>

@@ -10,6 +10,12 @@ export function ProfileRegistration() {
   const { hasProfile, registerProfile, isRegistering, isConfirmed, registerError, refetch } = useProfile(address);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isWaitingTooLong, setIsWaitingTooLong] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Fix hydration issue - only render after mount
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Refetch after confirmation and show success
   useEffect(() => {
@@ -54,8 +60,9 @@ export function ProfileRegistration() {
 
   // Don't show if already has profile or not connected
   // Add extra check to prevent showing when profile exists
-  if (!address || hasProfile || showSuccess) {
-    console.log('ProfileRegistration: Not showing modal', { address: !!address, hasProfile, showSuccess });
+  // Fix hydration: don't render until mounted
+  if (!isMounted || !address || hasProfile || showSuccess) {
+    console.log('ProfileRegistration: Not showing modal', { isMounted, address: !!address, hasProfile, showSuccess });
     return null;
   }
 

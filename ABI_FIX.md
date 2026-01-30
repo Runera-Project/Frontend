@@ -155,7 +155,11 @@ Get-Content ABI/RuneraProfileDynamicNFTABI.json | ConvertFrom-Json
 ### Test 2: Check in Code
 ```typescript
 // lib/contracts.ts
-import ProfileABI from '@/ABI/RuneraProfileDynamicNFTABI.json';
+// ⚠️ JANGAN GUNAKAN INI - ABI LAMA
+// import ProfileABI from '@/ABI/RuneraProfileDynamicNFTABI.json';
+
+// ✅ GUNAKAN INI - ABI2 YANG BENAR
+import ProfileABI from '@/ABI2/RuneraProfileABI.json';
 
 console.log('ABI loaded:', ProfileABI);
 console.log('First item:', ProfileABI[0]);

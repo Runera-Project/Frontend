@@ -43,13 +43,22 @@ export default function MarketPage() {
   const storeSkins = getStore().filter(item => item.category === currentCategory);
 
   const selectedSkin = cosmetics.find(item => item.itemId === selectedSkinId);
+  
+  // Transform selectedSkin to match ProfilePreview interface
+  const selectedSkinForPreview = selectedSkin ? {
+    name: selectedSkin.name,
+    type: activeTab.toLowerCase().slice(0, -1),
+    gradient: selectedSkin.gradient,
+  } : null;
 
-  const handleSelectSkin = (itemId: number) => {
-    const skin = cosmetics.find(item => item.itemId === itemId);
-    if (skin?.owned) {
-      setSelectedSkinId(itemId);
+  const handleSelectSkin = (skin: { id: number; name: string; type: string; owned: boolean; rarity?: string; gradient: string }) => {
+    if (skin.owned) {
+      setSelectedSkinId(skin.id);
       // Auto-equip when selected
-      handleEquip(skin.category, itemId);
+      const cosmeticItem = cosmetics.find(item => item.itemId === skin.id);
+      if (cosmeticItem) {
+        handleEquip(cosmeticItem.category, skin.id);
+      }
     }
   };
 
@@ -57,7 +66,7 @@ export default function MarketPage() {
     <div className="min-h-screen bg-[#f5f7fa]">
       <div className="mx-auto max-w-md pb-28">
         <MarketHeader />
-        <ProfilePreview selectedSkin={selectedSkin} />
+        <ProfilePreview selectedSkin={selectedSkinForPreview} />
         <PreviewTabs activeTab={activeTab} onTabChange={setActiveTab} />
         
         <div className="px-5">

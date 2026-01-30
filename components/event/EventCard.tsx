@@ -2,14 +2,16 @@
 
 import { Calendar, MapPin, Users, Award, Clock } from 'lucide-react';
 import { EventData } from '@/hooks/useEvents';
-import { useEvents } from '@/hooks/useEvents';
+import { useJoinEvent } from '@/hooks/useJoinEvent';
+import { useState } from 'react';
 
 interface EventCardProps {
   event: EventData;
 }
 
 export default function EventCard({ event }: EventCardProps) {
-  const { joinEvent } = useEvents();
+  const { join, isLoading } = useJoinEvent();
+  const [joined, setJoined] = useState(false);
   
   const formatDate = (timestamp: bigint) => {
     const date = new Date(Number(timestamp) * 1000);
@@ -28,8 +30,14 @@ export default function EventCard({ event }: EventCardProps) {
     return 'ENDED';
   };
 
-  const handleJoin = () => {
-    joinEvent(event.eventId);
+  const handleJoin = async () => {
+    try {
+      await join(event.eventId);
+      setJoined(true);
+      alert('Successfully joined event! 🎉');
+    } catch (error: any) {
+      alert(`Failed to join event: ${error.message}`);
+    }
   };
 
   return (
@@ -140,9 +148,10 @@ export default function EventCard({ event }: EventCardProps) {
               </div>
               <button 
                 onClick={handleJoin}
-                className={`rounded-full bg-gradient-to-r ${getStatusColor()} px-8 py-3 text-sm font-bold text-white shadow-md transition-all hover:shadow-lg hover:scale-105`}
+                disabled={isLoading || joined}
+                className={`rounded-full bg-gradient-to-r ${getStatusColor()} px-8 py-3 text-sm font-bold text-white shadow-md transition-all hover:shadow-lg hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed`}
               >
-                {event.status === 'active' ? 'Join Now' : 'Register'}
+                {isLoading ? 'Joining...' : joined ? 'Joined ✓' : event.status === 'active' ? 'Join Now' : 'Register'}
               </button>
             </>
           )}

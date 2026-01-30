@@ -103,7 +103,7 @@ export default function QuestCard() {
       </div>
 
       {/* Steps Progress */}
-      <div>
+      <div className="mb-5">
         <div className="mb-2 flex items-center justify-between">
           <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Steps</p>
           <p className="text-xs font-semibold text-gray-500">{Math.round(stepProgress)}%</p>
@@ -117,6 +117,80 @@ export default function QuestCard() {
             className="h-full rounded-full bg-blue-500 transition-all duration-300"
             style={{ width: `${stepProgress}%` }}
           />
+        </div>
+      </div>
+
+      {/* Daily Quests */}
+      <div>
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-xs font-bold uppercase tracking-wider text-gray-500">Daily Quests</p>
+          <p className="text-[10px] font-medium text-gray-400">3 Active</p>
+        </div>
+        
+        <div className="space-y-2">
+          {/* Quest 1: Run 5km */}
+          <div className="flex items-center gap-3 rounded-xl border border-gray-100 bg-gradient-to-r from-blue-50 to-transparent p-3 transition-all hover:border-blue-200">
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-blue-500 text-white">
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-900">Run 5 Kilometers</p>
+              <div className="mt-1 flex items-center gap-2">
+                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-200">
+                  <div className="h-full rounded-full bg-blue-500" style={{ width: '60%' }} />
+                </div>
+                <span className="text-[10px] font-medium text-gray-500">3.0/5.0 km</span>
+              </div>
+            </div>
+            <div className="flex flex-col items-end gap-0.5">
+              <span className="text-xs font-bold text-yellow-600">+50 XP</span>
+              <span className="text-[10px] text-gray-400">6h left</span>
+            </div>
+          </div>
+
+          {/* Quest 2: Complete 3 Activities */}
+          <div className="flex items-center gap-3 rounded-xl border border-gray-100 bg-gradient-to-r from-green-50 to-transparent p-3 transition-all hover:border-green-200">
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-green-500 text-white">
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-900">Complete 3 Activities</p>
+              <div className="mt-1 flex items-center gap-2">
+                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-200">
+                  <div className="h-full rounded-full bg-green-500" style={{ width: '33%' }} />
+                </div>
+                <span className="text-[10px] font-medium text-gray-500">1/3 done</span>
+              </div>
+            </div>
+            <div className="flex flex-col items-end gap-0.5">
+              <span className="text-xs font-bold text-yellow-600">+30 XP</span>
+              <span className="text-[10px] text-gray-400">12h left</span>
+            </div>
+          </div>
+
+          {/* Quest 3: Maintain Streak */}
+          <div className="flex items-center gap-3 rounded-xl border border-gray-100 bg-gradient-to-r from-orange-50 to-transparent p-3 transition-all hover:border-orange-200">
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-orange-500 text-white">
+              <Flame className="h-5 w-5" fill="currentColor" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-900">Maintain 7-Day Streak</p>
+              <div className="mt-1 flex items-center gap-2">
+                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-200">
+                  <div className="h-full rounded-full bg-orange-500" style={{ width: `${(currentStreak / 7) * 100}%` }} />
+                </div>
+                <span className="text-[10px] font-medium text-gray-500">{currentStreak}/7 days</span>
+              </div>
+            </div>
+            <div className="flex flex-col items-end gap-0.5">
+              <span className="text-xs font-bold text-yellow-600">+100 XP</span>
+              <span className="text-[10px] text-gray-400">Weekly</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>

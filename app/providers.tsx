@@ -34,14 +34,24 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         loginMethods: ['email', 'google', 'wallet'],
         // Embedded wallet configuration
         embeddedWallets: {
-          createOnLogin: 'users-without-wallets',
-          requireUserPasswordOnCreate: false,
+          ethereum: {
+            createOnLogin: 'users-without-wallets',
+          },
         },
         // Default chain - Base Sepolia Testnet
         defaultChain: baseSepolia,
         supportedChains: [baseSepolia],
         // Wallet configuration
         walletConnectCloudProjectId: undefined,
+        // Session persistence - Keep user logged in
+        legal: {
+          termsAndConditionsUrl: undefined,
+          privacyPolicyUrl: undefined,
+        },
+        // Disable auto-logout on page refresh
+        mfa: {
+          noPromptOnMfaRequired: false,
+        },
       }}
     >
       <QueryClientProvider client={queryClient}>

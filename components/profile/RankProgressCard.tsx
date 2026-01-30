@@ -75,7 +75,7 @@ export default function RankProgressCard({ profile }: RankProgressCardProps) {
           </div>
           
           <div className="mt-2 text-center text-xs text-gray-500">
-            {(nextTierRequirement - currentDistance).toFixed(1)} km to {TIER_NAMES[nextTier]}
+            {(nextTierRequirement - currentDistance).toFixed(1)} km to {TIER_NAMES[nextTier as keyof typeof TIER_NAMES]}
           </div>
         </>
       )}

@@ -37,7 +37,7 @@ export function useProfile(address?: Address) {
   });
 
   // Use balanceOf as fallback if hasProfile doesn't work
-  const hasProfileFallback = tokenBalance !== undefined && tokenBalance > 0n;
+  const hasProfileFallback = tokenBalance !== undefined && tokenBalance > BigInt(0);
 
   // Log hasProfile status for debugging (only when changed)
   useEffect(() => {
@@ -123,23 +123,23 @@ export function useProfile(address?: Address) {
   };
 
   // Format profile data (NEW ABI2 structure!)
-  const profile = profileData && profileData.exists ? {
+  const profile = profileData && (profileData as any).exists ? {
     // Calculate tier based on XP/Level (frontend calculation for now)
-    tier: Math.min(Math.floor(Number(profileData.level) / 10) + 1, 5), // Level 0-9=Bronze, 10-19=Silver, etc.
-    tierName: TIER_NAMES[Math.min(Math.floor(Number(profileData.level) / 10) + 1, 5) as keyof typeof TIER_NAMES],
+    tier: Math.min(Math.floor(Number((profileData as any).level) / 10) + 1, 5), // Level 0-9=Bronze, 10-19=Silver, etc.
+    tierName: TIER_NAMES[Math.min(Math.floor(Number((profileData as any).level) / 10) + 1, 5) as keyof typeof TIER_NAMES],
     stats: {
-      totalDistance: Number(profileData.totalDistanceMeters) / 1000, // meters to km
-      totalActivities: Number(profileData.runCount),
+      totalDistance: Number((profileData as any).totalDistanceMeters) / 1000, // meters to km
+      totalActivities: Number((profileData as any).runCount),
       totalDuration: 0, // Not in new ABI, set to 0
       currentStreak: 0, // Not in new ABI, set to 0
-      longestStreak: Number(profileData.longestStreakDays),
-      lastActivityTimestamp: Number(profileData.lastUpdated),
+      longestStreak: Number((profileData as any).longestStreakDays),
+      lastActivityTimestamp: Number((profileData as any).lastUpdated),
     },
-    xp: Number(profileData.xp),
-    level: Number(profileData.level),
-    achievementCount: Number(profileData.achievementCount),
+    xp: Number((profileData as any).xp),
+    level: Number((profileData as any).level),
+    achievementCount: Number((profileData as any).achievementCount),
     registeredAt: 0, // Not in new ABI
-    tokenId: address ? BigInt(address) : 0n, // Token ID is derived from address
+    tokenId: address ? BigInt(address) : BigInt(0), // Token ID is derived from address
   } : null;
 
   // Use fallback if hasProfile doesn't work OR if balanceOf works
@@ -158,7 +158,7 @@ export function useProfile(address?: Address) {
       lastActivityTimestamp: 0,
     },
     registeredAt: Date.now() / 1000,
-    tokenId: 0n,
+    tokenId: BigInt(0),
   } : null);
 
   // Log profile data (only once per session)
