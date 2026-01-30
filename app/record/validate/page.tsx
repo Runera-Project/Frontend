@@ -4,7 +4,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { CheckCircle2, MapPin, Clock, TrendingUp, Share2 } from 'lucide-react';
 import BottomNavigation from '@/components/BottomNavigation';
 import { Suspense, useState } from 'react';
-import { useAccount, useWriteContract } from 'wagmi';
+import { useAccount, useWriteContract, usePublicClient } from 'wagmi';
 import { submitRun } from '@/lib/api';
 import { CONTRACTS, ABIS } from '@/lib/contracts';
 
@@ -12,6 +12,7 @@ function ValidateContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { address } = useAccount();
+  const publicClient = usePublicClient();
   const [title, setTitle] = useState('Morning Run');
   const [isPosting, setIsPosting] = useState(false);
   const [useDummyData, setUseDummyData] = useState(false);
@@ -210,8 +211,36 @@ function ValidateContent() {
           if (deadline < currentTime) {
             throw new Error(`Signature expired! Deadline: ${deadline}, Current: ${currentTime}`);
           }
-          
-          console.log('✅ Pre-flight checks passed, sending transaction...');
+
+          // Check if user has profile registered
+          console.log('🔍 Checking if user has profile...');
+          try {
+            if (!publicClient) {
+              throw new Error('Public client not initialized');
+            }
+            const hasProfile = await publicClient.readContract({
+              address: CONTRACTS.ProfileNFT,
+              abi: ABIS.ProfileNFT,
+              functionName: 'hasProfile',
+              args: [address],
+            });
+
+            console.log('📊 Profile status:', {
+              hasProfile,
+              userAddress: address,
+            });
+
+            if (!hasProfile) {
+              throw new Error('Profile not registered! Please register your profile first on the Profile page.');
+            }
+          } catch (profileError: any) {
+            console.error('⚠️ Failed to check profile:', profileError);
+            if (profileError.message?.includes('not registered')) {
+              throw profileError;
+            }
+          }
+
+          console.log('✅ All pre-flight checks passed, sending transaction...');
           
           // Call updateStats on smart contract
           const tx = await writeContractAsync({

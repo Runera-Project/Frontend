@@ -58,10 +58,9 @@ export function ProfileRegistration() {
     }
   }, [isRegistering, isConfirmed, refetch]);
 
-  // Don't show if already has profile or not connected
-  // Add extra check to prevent showing when profile exists
+  // Don't show if already has profile (unless showing success) or not connected
   // Fix hydration: don't render until mounted
-  if (!isMounted || !address || hasProfile || showSuccess) {
+  if (!isMounted || !address || (hasProfile && !showSuccess)) {
     console.log('ProfileRegistration: Not showing modal', { isMounted, address: !!address, hasProfile, showSuccess });
     return null;
   }
