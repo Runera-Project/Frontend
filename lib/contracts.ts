@@ -24,7 +24,7 @@ export const ABIS = {
   Marketplace: MarketplaceABI,
 } as const;
 
-// Tier configuration
+// Tier configuration (based on LEVEL, not distance)
 export const TIER_NAMES = {
   1: 'Bronze',
   2: 'Silver',
@@ -33,12 +33,37 @@ export const TIER_NAMES = {
   5: 'Diamond',
 } as const;
 
+// Tier requirements based on LEVEL (matching smart contract logic)
 export const TIER_REQUIREMENTS = {
-  1: 0,      // Bronze - default
-  2: 50,     // Silver - 50km
-  3: 200,    // Gold - 200km
-  4: 500,    // Platinum - 500km
-  5: 1000,   // Diamond - 1000km
+  1: 1,   // Bronze - Level 1-2
+  2: 3,   // Silver - Level 3-4 (TIER_SILVER = 3)
+  3: 5,   // Gold - Level 5-6 (TIER_GOLD = 5)
+  4: 7,   // Platinum - Level 7-8 (TIER_PLATINUM = 7)
+  5: 9,   // Diamond - Level 9+ (TIER_DIAMOND = 9)
+} as const;
+
+// XP requirements per level (backend calculates this, but useful for frontend display)
+export const LEVEL_XP_REQUIREMENTS = {
+  1: 0,
+  2: 100,
+  3: 250,
+  4: 450,
+  5: 700,
+  6: 1000,
+  7: 1350,
+  8: 1750,
+  9: 2200,
+  10: 2700,
+  11: 3250,
+  12: 3850,
+  13: 4500,
+  14: 5200,
+  15: 5950,
+  16: 6750,
+  17: 7600,
+  18: 8500,
+  19: 9450,
+  20: 10450,
 } as const;
 
 export const TIER_COLORS = {

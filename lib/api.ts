@@ -6,6 +6,14 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 /**
+ * Get JWT token from localStorage
+ */
+function getAuthToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('runera_token');
+}
+
+/**
  * Helper function untuk fetch dengan error handling
  */
 async function fetchAPI<T>(
@@ -13,12 +21,14 @@ async function fetchAPI<T>(
   options?: RequestInit
 ): Promise<T> {
   const url = `${API_URL}${endpoint}`;
+  const token = getAuthToken();
   
   try {
     const response = await fetch(url, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` }),
         ...options?.headers,
       },
     });
@@ -62,12 +72,77 @@ async function fetchAPI<T>(
 
 /**
  * ============================================
+ * AUTHENTICATION API
+ * ============================================
+ */
+
+export interface RequestNonceRequest {
+  walletAddress: string;
+}
+
+export interface RequestNonceResponse {
+  nonce: string;
+  message: string;
+}
+
+export interface ConnectRequest {
+  walletAddress: string;
+  signature: string;
+  message: string;
+  nonce: string;
+}
+
+export interface ConnectResponse {
+  token: string;
+  user: {
+    walletAddress: string;
+    nonce: string;
+  };
+}
+
+/**
+ * Request nonce for wallet authentication
+ * POST /auth/nonce
+ */
+export async function requestNonce(
+  data: RequestNonceRequest
+): Promise<RequestNonceResponse> {
+  return fetchAPI<RequestNonceResponse>('/auth/nonce', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+/**
+ * Connect wallet and get JWT token
+ * POST /auth/connect
+ */
+export async function connectWallet(
+  data: ConnectRequest
+): Promise<ConnectResponse> {
+  const response = await fetchAPI<ConnectResponse>('/auth/connect', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  
+  // Save token to localStorage
+  if (response.token) {
+    localStorage.setItem('runera_token', response.token);
+    console.log('✅ JWT token saved to localStorage');
+  }
+  
+  return response;
+}
+
+/**
+ * ============================================
  * RUN SUBMISSION API
  * ============================================
  */
 
 export interface RunSubmitRequest {
-  walletAddress: string; // Backend expects walletAddress, not userAddress
+  // walletAddress is now optional - backend will extract from JWT
+  walletAddress?: string;
   distanceMeters: number; // in meters
   durationSeconds: number; // in seconds
   startTime: number; // unix timestamp
@@ -82,9 +157,18 @@ export interface RunSubmitRequest {
 }
 
 export interface RunSubmitResponse {
-  success: boolean;
-  message: string;
-  run: {
+  success?: boolean;
+  message?: string;
+  runId: string;
+  status: string;
+  reasonCode: string | null;
+  onchainSync?: {
+    signature: string;
+    deadline: number;
+    stats: ProfileStats;
+  };
+  // Legacy fields (might not be present)
+  run?: {
     id: string;
     distance: number;
     duration: number;

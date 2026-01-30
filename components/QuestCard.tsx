@@ -14,6 +14,21 @@ export default function QuestCard() {
   const DAILY_STEP_TARGET = 8500;
   const stepProgress = Math.min((dailySteps / DAILY_STEP_TARGET) * 100, 100);
 
+  // Get XP earned today from localStorage
+  const getTodayXP = () => {
+    const activities = JSON.parse(localStorage.getItem('runera_activities') || '[]');
+    const today = new Date().toDateString();
+    
+    return activities
+      .filter((activity: any) => {
+        const activityDate = new Date(activity.timestamp).toDateString();
+        return activityDate === today;
+      })
+      .reduce((total: number, activity: any) => total + (activity.xpEarned || 0), 0);
+  };
+
+  const todayXP = getTodayXP();
+
   // Get current week days with completion status
   const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const today = new Date().getDay(); // 0 = Sunday, 1 = Monday, etc.
@@ -172,23 +187,25 @@ export default function QuestCard() {
             </div>
           </div>
 
-          {/* Quest 3: Maintain Streak */}
-          <div className="flex items-center gap-3 rounded-xl border border-gray-100 bg-gradient-to-r from-orange-50 to-transparent p-3 transition-all hover:border-orange-200">
-            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-orange-500 text-white">
-              <Flame className="h-5 w-5" fill="currentColor" />
+          {/* Quest 3: XP Today */}
+          <div className="flex items-center gap-3 rounded-xl border border-gray-100 bg-gradient-to-r from-yellow-50 to-transparent p-3 transition-all hover:border-yellow-200">
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-yellow-500 text-white">
+              <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900">Maintain 7-Day Streak</p>
+              <p className="text-sm font-semibold text-gray-900">XP Earned Today</p>
               <div className="mt-1 flex items-center gap-2">
                 <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-200">
-                  <div className="h-full rounded-full bg-orange-500" style={{ width: `${(currentStreak / 7) * 100}%` }} />
+                  <div className="h-full rounded-full bg-yellow-500" style={{ width: `${Math.min((todayXP / 100) * 100, 100)}%` }} />
                 </div>
-                <span className="text-[10px] font-medium text-gray-500">{currentStreak}/7 days</span>
+                <span className="text-[10px] font-medium text-gray-500">{todayXP}/100 XP</span>
               </div>
             </div>
             <div className="flex flex-col items-end gap-0.5">
-              <span className="text-xs font-bold text-yellow-600">+100 XP</span>
-              <span className="text-[10px] text-gray-400">Weekly</span>
+              <span className="text-xs font-bold text-yellow-600">+{todayXP} XP</span>
+              <span className="text-[10px] text-gray-400">Today</span>
             </div>
           </div>
         </div>

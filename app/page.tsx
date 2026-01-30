@@ -3,6 +3,7 @@
 import { useAccount } from 'wagmi';
 import Header from '@/components/Header';
 import QuestCard from '@/components/QuestCard';
+import RecentRun from '@/components/RecentRun';
 import BottomNavigation from '@/components/BottomNavigation';
 import AuthGuard from '@/components/AuthGuard';
 import { ProfileRegistration } from '@/components/ProfileRegistration';
@@ -17,6 +18,7 @@ export default function Home() {
         <div className="mx-auto max-w-md pb-28">
           <Header />
           <QuestCard />
+          <RecentRun />
         </div>
         <BottomNavigation activeTab="Home" />
         

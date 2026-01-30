@@ -65,6 +65,17 @@ export function useProfile(address?: Address) {
     },
   });
 
+  // Get tier from smart contract (already calculated by backend/SC)
+  const { data: tierData, refetch: refetchTier } = useReadContract({
+    address: CONTRACTS.ProfileNFT,
+    abi: ABIS.ProfileNFT,
+    functionName: 'getProfileTier',
+    args: address ? [address] : undefined,
+    query: {
+      enabled: !!address && (hasProfile === true || hasProfileFallback),
+    },
+  });
+
   // Log profile fetch errors (now with correct ABI!)
   useEffect(() => {
     if (profileError && address) {
@@ -123,10 +134,12 @@ export function useProfile(address?: Address) {
   };
 
   // Format profile data (NEW ABI2 structure!)
+  // Use tier from smart contract (already calculated by backend)
+  const tier = tierData ? Number(tierData) : 1;
+  
   const profile = profileData && (profileData as any).exists ? {
-    // Calculate tier based on XP/Level (frontend calculation for now)
-    tier: Math.min(Math.floor(Number((profileData as any).level) / 10) + 1, 5), // Level 0-9=Bronze, 10-19=Silver, etc.
-    tierName: TIER_NAMES[Math.min(Math.floor(Number((profileData as any).level) / 10) + 1, 5) as keyof typeof TIER_NAMES],
+    tier: tier,
+    tierName: TIER_NAMES[tier as keyof typeof TIER_NAMES] || 'Bronze',
     stats: {
       totalDistance: Number((profileData as any).totalDistanceMeters) / 1000, // meters to km
       totalActivities: Number((profileData as any).runCount),
@@ -134,9 +147,9 @@ export function useProfile(address?: Address) {
       currentStreak: 0, // Not in new ABI, set to 0
       longestStreak: Number((profileData as any).longestStreakDays),
       lastActivityTimestamp: Number((profileData as any).lastUpdated),
+      level: Number((profileData as any).level),
+      xp: Number((profileData as any).xp),
     },
-    xp: Number((profileData as any).xp),
-    level: Number((profileData as any).level),
     achievementCount: Number((profileData as any).achievementCount),
     registeredAt: 0, // Not in new ABI
     tokenId: address ? BigInt(address) : BigInt(0), // Token ID is derived from address
@@ -156,7 +169,10 @@ export function useProfile(address?: Address) {
       currentStreak: 0,
       longestStreak: 0,
       lastActivityTimestamp: 0,
+      level: 1,
+      xp: 0,
     },
+    achievementCount: 0,
     registeredAt: Date.now() / 1000,
     tokenId: BigInt(0),
   } : null);
@@ -190,6 +206,7 @@ export function useProfile(address?: Address) {
     refetch: () => {
       refetchHasProfile();
       refetchProfile();
+      refetchTier();
     },
   };
 }

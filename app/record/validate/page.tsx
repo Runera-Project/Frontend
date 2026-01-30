@@ -4,8 +4,9 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { CheckCircle2, MapPin, Clock, TrendingUp, Share2 } from 'lucide-react';
 import BottomNavigation from '@/components/BottomNavigation';
 import { Suspense, useState } from 'react';
-import { useAccount } from 'wagmi';
+import { useAccount, useWriteContract } from 'wagmi';
 import { submitRun } from '@/lib/api';
+import { CONTRACTS, ABIS } from '@/lib/contracts';
 
 function ValidateContent() {
   const searchParams = useSearchParams();
@@ -13,6 +14,8 @@ function ValidateContent() {
   const { address } = useAccount();
   const [title, setTitle] = useState('Morning Run');
   const [isPosting, setIsPosting] = useState(false);
+  const [useDummyData, setUseDummyData] = useState(false);
+  const { writeContractAsync } = useWriteContract();
   
   const time = searchParams.get('time') || '0';
   const distance = searchParams.get('distance') || '0.00';
@@ -46,6 +49,20 @@ function ValidateContent() {
       return;
     }
 
+    // Check if JWT token exists
+    const token = localStorage.getItem('runera_token');
+    console.log('🔐 JWT Token check:', token ? '✅ Token exists' : '❌ No token');
+    
+    if (!token) {
+      console.warn('⚠️ No JWT token found!');
+      alert('Authentication required!\n\nPlease sign the message in your wallet to authenticate with backend.\n\nRedirecting to login...');
+      router.push('/login');
+      return;
+    }
+
+    console.log('📍 Wallet address:', address);
+    console.log('🌐 Backend URL:', process.env.NEXT_PUBLIC_API_URL);
+
     setIsPosting(true);
 
     try {
@@ -54,23 +71,77 @@ function ValidateContent() {
       const deviceHash = btoa(deviceInfo).substring(0, 32);
 
       // Prepare data untuk backend
-      let distanceInMeters = Math.round(parseFloat(distance) * 1000);
-      const durationInSeconds = parseInt(time);
+      let distanceInMeters, durationInSeconds, gpsDataToSend;
       
-      // TEMPORARY: For testing, ensure minimum distance of 1 meter
-      if (distanceInMeters === 0) {
-        console.warn('Distance is 0, setting to 1 meter for testing');
-        distanceInMeters = 1;
+      if (useDummyData) {
+        // ✅ DUMMY DATA - Guaranteed to pass validation
+        console.log('🧪 Using DUMMY DATA for testing');
+        
+        distanceInMeters = 5000;  // 5km (well above 100m minimum)
+        durationInSeconds = 1800; // 30 minutes (6 min/km pace - realistic)
+        
+        // Generate dummy GPS data (at least 2 points)
+        gpsDataToSend = [
+          {
+            latitude: -6.2088,
+            longitude: 106.8456,
+            timestamp: Date.now() - 1800000,
+            accuracy: 10
+          },
+          {
+            latitude: -6.2100,
+            longitude: 106.8470,
+            timestamp: Date.now() - 1500000,
+            accuracy: 10
+          },
+          {
+            latitude: -6.2115,
+            longitude: 106.8485,
+            timestamp: Date.now() - 1200000,
+            accuracy: 10
+          },
+          {
+            latitude: -6.2130,
+            longitude: 106.8500,
+            timestamp: Date.now() - 900000,
+            accuracy: 10
+          },
+          {
+            latitude: -6.2145,
+            longitude: 106.8515,
+            timestamp: Date.now(),
+            accuracy: 10
+          }
+        ];
+        
+        console.log('✅ Dummy data:', {
+          distance: '5000m (5km)',
+          duration: '1800s (30min)',
+          pace: '6:00 min/km',
+          gpsPoints: gpsDataToSend.length
+        });
+      } else {
+        // Real data from GPS tracking
+        distanceInMeters = Math.round(parseFloat(distance) * 1000);
+        durationInSeconds = parseInt(time);
+        
+        // TEMPORARY: For testing, ensure minimum distance of 1 meter
+        if (distanceInMeters === 0) {
+          console.warn('Distance is 0, setting to 1 meter for testing');
+          distanceInMeters = 1;
+        }
+        
+        gpsDataToSend = gpsData.length > 0 ? gpsData : undefined;
       }
       
       const runData = {
-        walletAddress: address, // Backend expects walletAddress
+        // walletAddress tidak perlu dikirim - backend akan extract dari JWT
         distanceMeters: distanceInMeters, // Backend expects distanceMeters (min 1)
         durationSeconds: durationInSeconds, // Backend expects durationSeconds
-        startTime: parseInt(startTime),
-        endTime: parseInt(endTime),
+        startTime: useDummyData ? Date.now() - 1800000 : parseInt(startTime),
+        endTime: useDummyData ? Date.now() : parseInt(endTime),
         deviceHash,
-        gpsData: gpsData.length > 0 ? gpsData : undefined,
+        gpsData: gpsDataToSend,
       };
 
       console.log('Submitting run to backend:', runData);
@@ -78,10 +149,160 @@ function ValidateContent() {
       // Submit ke backend /run/submit
       const result = await submitRun(runData);
 
-      console.log('Run submitted successfully:', result);
+      console.log('=== BACKEND RESPONSE ===');
+      console.log('Full response:', JSON.stringify(result, null, 2));
+      console.log('Status:', result.status);
+      console.log('Reason Code:', result.reasonCode);
+      console.log('Run ID:', result.runId);
+      
+      // Check if run was verified
+      if (result.status !== 'VERIFIED') {
+        console.warn('⚠️ Run was not verified!');
+        console.warn('Status:', result.status);
+        console.warn('Reason:', result.reasonCode);
+        alert(`Run submitted but not verified!\n\nStatus: ${result.status}\nReason: ${result.reasonCode || 'Unknown'}\n\nPlease check console for details.`);
+        router.push('/');
+        return;
+      }
+
+      // Extract XP from response
+      let xpEarned = 0;
+      
+      // Try different response structures
+      if (result.onchainSync?.stats?.xp) {
+        xpEarned = result.onchainSync.stats.xp;
+        console.log('✅ XP from onchainSync.stats.xp:', xpEarned);
+      } else if (result.run?.xpEarned) {
+        xpEarned = result.run.xpEarned;
+        console.log('✅ XP from run.xpEarned:', xpEarned);
+      } else if (result.xpEarned) {
+        xpEarned = result.xpEarned;
+        console.log('✅ XP from xpEarned:', xpEarned);
+      } else {
+        console.warn('⚠️ No XP found in response!');
+        console.warn('Response structure:', Object.keys(result));
+      }
+      
+      const runId = result.runId || result.run?.id || 'unknown';
+
+      // ✅ IMPORTANT: Update smart contract with signature from backend
+      if (result.onchainSync?.signature) {
+        console.log('📝 Updating smart contract with backend signature...');
+        console.log('🔍 Debug info:', {
+          userAddress: address,
+          stats: result.onchainSync.stats,
+          deadline: result.onchainSync.deadline,
+          signatureLength: result.onchainSync.signature.length,
+          currentTime: Math.floor(Date.now() / 1000),
+          timeUntilDeadline: result.onchainSync.deadline - Math.floor(Date.now() / 1000),
+        });
+        
+        try {
+          const { stats, signature, deadline } = result.onchainSync;
+          
+          // Validate deadline hasn't expired
+          const currentTime = Math.floor(Date.now() / 1000);
+          if (deadline < currentTime) {
+            throw new Error(`Signature expired! Deadline: ${deadline}, Current: ${currentTime}`);
+          }
+          
+          // Check if user has profile registered
+          console.log('🔍 Checking if user has profile...');
+          try {
+            const hasProfile = await readContract(config, {
+              address: CONTRACTS.ProfileNFT,
+              abi: ABIS.ProfileNFT,
+              functionName: 'hasProfile',
+              args: [address],
+            });
+            
+            console.log('📊 Profile status:', {
+              hasProfile,
+              userAddress: address,
+            });
+            
+            if (!hasProfile) {
+              throw new Error('Profile not registered! Please register your profile first on the Profile page.');
+            }
+          } catch (profileError: any) {
+            console.error('⚠️ Failed to check profile:', profileError);
+            if (profileError.message?.includes('not registered')) {
+              throw profileError;
+            }
+          }
+          
+          console.log('✅ All pre-flight checks passed, sending transaction...');
+          
+          // Call updateStats on smart contract
+          const tx = await writeContractAsync({
+            address: CONTRACTS.ProfileNFT,
+            abi: ABIS.ProfileNFT,
+            functionName: 'updateStats',
+            args: [
+              address, // user address
+              {
+                xp: BigInt(stats.xp),
+                level: stats.level,
+                runCount: stats.runCount,
+                achievementCount: stats.achievementCount,
+                totalDistanceMeters: BigInt(stats.totalDistanceMeters),
+                longestStreakDays: stats.longestStreakDays,
+                lastUpdated: BigInt(stats.lastUpdated),
+              },
+              BigInt(deadline),
+              signature,
+            ],
+          });
+          
+          console.log('✅ Smart contract updated!');
+          console.log('Transaction hash:', tx);
+          console.log('View on BaseScan:', `https://sepolia.basescan.org/tx/${tx}`);
+          
+          alert(`✅ On-chain update successful!\n\nXP: ${stats.xp}\nLevel: ${stats.level}\n\nTx: ${tx.slice(0, 10)}...`);
+        } catch (error: any) {
+          console.error('❌ Smart contract update failed:', error);
+          
+          // Parse error message for specific issues
+          let errorMsg = error.message || 'Unknown error';
+          let userFriendlyMsg = '';
+          
+          if (errorMsg.includes('InvalidSignature') || errorMsg.includes('InvalidSigner')) {
+            userFriendlyMsg = '❌ Signature verification failed!\n\nThe backend signature is invalid or the backend wallet is not authorized.\n\nPlease contact support.';
+          } else if (errorMsg.includes('SignatureExpired')) {
+            userFriendlyMsg = '⏰ Signature expired!\n\nThe transaction took too long to process. Please try again.';
+          } else if (errorMsg.includes('NotRegistered')) {
+            userFriendlyMsg = '⚠️ Profile not registered!\n\nPlease register your profile first on the Profile page.';
+          } else if (errorMsg.includes('user rejected') || errorMsg.includes('User denied')) {
+            userFriendlyMsg = '🚫 Transaction cancelled by user.';
+          } else {
+            userFriendlyMsg = `⚠️ Backend updated but on-chain sync failed!\n\nYour XP is saved in backend, but not yet on blockchain.\n\nError: ${errorMsg.substring(0, 100)}`;
+          }
+          
+          alert(userFriendlyMsg);
+        }
+      } else {
+        console.warn('⚠️ No signature from backend, skipping on-chain update');
+      }
+
+      // Update streak - increment if user ran today
+      const today = new Date().toDateString();
+      const lastRunDate = localStorage.getItem('runera_last_run_date');
+      
+      if (lastRunDate !== today) {
+        // New day, increment streak
+        const currentStreak = parseInt(localStorage.getItem('runera_streak') || '0');
+        const newStreak = currentStreak + 1;
+        localStorage.setItem('runera_streak', String(newStreak));
+        localStorage.setItem('runera_last_run_date', today);
+        console.log(`Streak updated: ${currentStreak} → ${newStreak}`);
+      }
 
       // Show success message
-      alert(`Activity posted! +${result.run.xpEarned} XP earned! 🎉`);
+      if (xpEarned > 0) {
+        alert(`Activity posted! +${xpEarned} XP earned! 🎉\n\nRun ID: ${runId}\nStatus: ${result.status}`);
+      } else {
+        alert(`Activity posted successfully! 🎉\n\nRun ID: ${runId}\nStatus: ${result.status}`);
+      }
 
       // Redirect to home
       router.push('/');
@@ -90,10 +311,13 @@ function ValidateContent() {
       
       // Show detailed error message
       const errorMsg = error.message || 'Unknown error';
-      alert(`Failed to submit to backend: ${errorMsg}\n\nSaving locally instead...`);
       
       // Fallback: Save to localStorage
       console.warn('Backend error, saving locally');
+      
+      // Estimate XP based on distance (10 XP per km)
+      const estimatedXP = Math.round(parseFloat(distance) * 10);
+      
       const activities = JSON.parse(localStorage.getItem('runera_activities') || '[]');
       activities.push({
         id: Date.now(),
@@ -102,9 +326,23 @@ function ValidateContent() {
         duration: parseInt(time),
         pace,
         timestamp: Date.now(),
+        xpEarned: estimatedXP,
         gpsData: gpsData.length > 0 ? gpsData : undefined,
       });
       localStorage.setItem('runera_activities', JSON.stringify(activities));
+      
+      // Update streak
+      const today = new Date().toDateString();
+      const lastRunDate = localStorage.getItem('runera_last_run_date');
+      
+      if (lastRunDate !== today) {
+        const currentStreak = parseInt(localStorage.getItem('runera_streak') || '0');
+        const newStreak = currentStreak + 1;
+        localStorage.setItem('runera_streak', String(newStreak));
+        localStorage.setItem('runera_last_run_date', today);
+      }
+      
+      alert(`Activity saved locally! +${estimatedXP} XP earned!\n\nNote: Backend unavailable (${errorMsg})`);
       
       router.push('/');
     } finally {
@@ -212,25 +450,55 @@ function ValidateContent() {
         </div>
 
         {/* Action Buttons */}
-        <div className="mx-5 flex gap-3">
-          <button
-            onClick={handleCancel}
-            disabled={isPosting}
-            className="flex flex-1 items-center justify-center gap-2 rounded-xl border-2 border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-700 shadow-sm transition-all hover:border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-            Cancel
-          </button>
-          <button
-            onClick={handlePost}
-            disabled={isPosting}
-            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 px-4 py-3 text-sm font-bold text-white shadow-sm transition-all hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Share2 className="h-4 w-4" />
-            {isPosting ? 'Posting...' : 'Post'}
-          </button>
+        <div className="mx-5 space-y-3">
+          {/* Test Mode Toggle */}
+          <div className="rounded-xl bg-yellow-50 border-2 border-yellow-200 p-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🧪</span>
+                <span className="text-sm font-bold text-yellow-900">Test Mode</span>
+              </div>
+              <button
+                onClick={() => setUseDummyData(!useDummyData)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  useDummyData ? 'bg-yellow-600' : 'bg-gray-300'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    useDummyData ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+            <p className="text-xs text-yellow-700">
+              {useDummyData 
+                ? '✅ Using dummy data (5km, 30min, 6:00 pace, GPS data)' 
+                : 'Using real GPS tracking data'}
+            </p>
+          </div>
+
+          {/* Submit Buttons */}
+          <div className="flex gap-3">
+            <button
+              onClick={handleCancel}
+              disabled={isPosting}
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl border-2 border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-700 shadow-sm transition-all hover:border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Cancel
+            </button>
+            <button
+              onClick={handlePost}
+              disabled={isPosting}
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 px-4 py-3 text-sm font-bold text-white shadow-sm transition-all hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Share2 className="h-4 w-4" />
+              {isPosting ? 'Posting...' : useDummyData ? 'Test Submit' : 'Post'}
+            </button>
+          </div>
         </div>
       </div>
       <BottomNavigation activeTab="Record" />

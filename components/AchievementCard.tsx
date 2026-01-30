@@ -35,15 +35,25 @@ export default function AchievementCard({ achievement, size = 'medium' }: Achiev
 
   const handleClaim = async () => {
     try {
-      // TODO: Get actual eventId and metadataHash from achievement
-      const eventId = achievement.id; // Use achievement ID as eventId for now
-      const metadataHash = '0x0000000000000000000000000000000000000000000000000000000000000000'; // Placeholder
+      console.log('🎯 Claiming achievement:', achievement.id);
       
-      await claimAchievement(eventId, achievement.tier, metadataHash);
+      // Call claim with achievement ID and tier
+      // The hook will handle conversion to bytes32 and metadata hash generation
+      const result = await claimAchievement(achievement.id, achievement.tier);
+      
       setClaimed(true);
-      alert('Achievement claimed! NFT minted! 🎉');
+      
+      alert(
+        `✅ Achievement claimed! NFT minted! 🎉\n\n` +
+        `Achievement: ${achievement.name}\n` +
+        `Tier: ${TIER_NAMES[achievement.tier]}\n` +
+        `Reward: +${achievement.reward.xp} XP\n\n` +
+        `Transaction: ${result.hash.slice(0, 10)}...${result.hash.slice(-8)}\n` +
+        `View on BaseScan: https://sepolia.basescan.org/tx/${result.hash}`
+      );
     } catch (error: any) {
-      alert(`Failed to claim: ${error.message}`);
+      console.error('❌ Claim failed:', error);
+      alert(`Failed to claim achievement!\n\nError: ${error.message}`);
     }
   };
 
