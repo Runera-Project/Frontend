@@ -191,6 +191,7 @@ function ValidateContent() {
         console.log('🔍 Debug info:', {
           userAddress: address,
           stats: result.onchainSync.stats,
+          nonce: result.onchainSync.nonce,
           deadline: result.onchainSync.deadline,
           signatureLength: result.onchainSync.signature.length,
           currentTime: Math.floor(Date.now() / 1000),
@@ -198,7 +199,11 @@ function ValidateContent() {
         });
         
         try {
-          const { stats, signature, deadline } = result.onchainSync;
+          const { stats, signature, deadline, nonce } = result.onchainSync;
+          
+          // Log nonce from backend (we'll check it manually if needed)
+          console.log('📊 Backend nonce:', nonce);
+          console.log('⚠️ If transaction fails, check nonce mismatch using scripts/check-nonce.html');
           
           // Validate deadline hasn't expired
           const currentTime = Math.floor(Date.now() / 1000);
@@ -206,32 +211,7 @@ function ValidateContent() {
             throw new Error(`Signature expired! Deadline: ${deadline}, Current: ${currentTime}`);
           }
           
-          // Check if user has profile registered
-          console.log('🔍 Checking if user has profile...');
-          try {
-            const hasProfile = await readContract(config, {
-              address: CONTRACTS.ProfileNFT,
-              abi: ABIS.ProfileNFT,
-              functionName: 'hasProfile',
-              args: [address],
-            });
-            
-            console.log('📊 Profile status:', {
-              hasProfile,
-              userAddress: address,
-            });
-            
-            if (!hasProfile) {
-              throw new Error('Profile not registered! Please register your profile first on the Profile page.');
-            }
-          } catch (profileError: any) {
-            console.error('⚠️ Failed to check profile:', profileError);
-            if (profileError.message?.includes('not registered')) {
-              throw profileError;
-            }
-          }
-          
-          console.log('✅ All pre-flight checks passed, sending transaction...');
+          console.log('✅ Pre-flight checks passed, sending transaction...');
           
           // Call updateStats on smart contract
           const tx = await writeContractAsync({
