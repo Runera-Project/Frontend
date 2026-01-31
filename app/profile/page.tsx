@@ -12,6 +12,7 @@ import AuthGuard from '@/components/AuthGuard';
 import { ProfileRegistration } from '@/components/ProfileRegistration';
 import WalletAddressDisplay from '@/components/WalletAddressDisplay';
 import { useEffect, useState } from 'react';
+import { AlertTriangle, User } from 'lucide-react';
 
 export default function ProfilePage() {
   const { address } = useAccount();
@@ -61,7 +62,11 @@ export default function ProfilePage() {
             <ProfileHeader />
             <div className="px-5 py-12">
               <div className="bg-white rounded-2xl p-8 text-center">
-                <div className="mb-4 text-5xl">⚠️</div>
+                <div className="mb-4 flex justify-center">
+                  <div className="w-14 h-14 rounded-full bg-yellow-100 flex items-center justify-center">
+                    <AlertTriangle className="h-7 w-7 text-yellow-600" />
+                  </div>
+                </div>
                 <h3 className="mb-2 text-lg font-bold text-gray-900">Something went wrong</h3>
                 <p className="mb-4 text-sm text-gray-600">
                   Unable to load profile. Please refresh the page.
@@ -99,9 +104,10 @@ export default function ProfilePage() {
               {console.log('=== Rendering Profile UI ===')}
               {!profile && hasProfile && (
                 <div className="mx-6 mb-4">
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 text-center">
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 flex items-center justify-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-yellow-700" />
                     <p className="text-xs text-yellow-700">
-                      ⚠️ Using dummy data due to ABI mismatch
+                      Using dummy data due to ABI mismatch
                     </p>
                   </div>
                 </div>
@@ -145,7 +151,9 @@ export default function ProfilePage() {
                     return (
                       <div className="mx-6">
                         <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
-                          <div className="mb-2 text-3xl">⚠️</div>
+                          <div className="mb-2 flex justify-center">
+                            <AlertTriangle className="h-8 w-8 text-red-500" />
+                          </div>
                           <p className="text-sm font-semibold text-red-900">Component Error</p>
                           <p className="text-xs text-red-600 mt-1">{String(error)}</p>
                         </div>
@@ -158,7 +166,11 @@ export default function ProfilePage() {
           ) : (
             <div className="px-5 py-12">
               <div className="bg-white rounded-2xl p-8 text-center">
-                <div className="mb-4 text-5xl">👤</div>
+                <div className="mb-4 flex justify-center">
+                  <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center">
+                    <User className="h-7 w-7 text-gray-400" />
+                  </div>
+                </div>
                 <h3 className="mb-2 text-lg font-bold text-gray-900">No Profile Found</h3>
                 <p className="text-sm text-gray-600">
                   Create your profile to get started

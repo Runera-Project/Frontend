@@ -5,6 +5,7 @@ import { useAccount } from 'wagmi';
 import { useProfile } from '@/hooks/useProfile';
 import { usePrivy } from '@privy-io/react-auth';
 import { TIER_COLORS } from '@/lib/contracts';
+import { User } from 'lucide-react';
 
 interface ProfilePreviewProps {
   selectedSkin: {
@@ -66,8 +67,8 @@ export default function ProfilePreview({ selectedSkin }: ProfilePreviewProps) {
         {/* Avatar - overlapping banner */}
         <div className="relative -mt-12 mb-4 flex justify-center">
           <div className="relative h-24 w-24 overflow-hidden rounded-full border-4 border-white bg-gradient-to-br from-yellow-400 to-orange-500 shadow-lg">
-            <div className="flex h-full items-center justify-center text-4xl">
-              👤
+            <div className="flex h-full items-center justify-center">
+              <User className="h-10 w-10 text-white" />
             </div>
           </div>
         </div>

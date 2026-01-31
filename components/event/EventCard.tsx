@@ -1,6 +1,6 @@
 'use client';
 
-import { Calendar, MapPin, Users, Award, Clock } from 'lucide-react';
+import { Calendar, MapPin, Users, Award, Clock, Flame, CalendarDays, CheckCircle, Check } from 'lucide-react';
 import { EventData } from '@/hooks/useEvents';
 import { useJoinEvent } from '@/hooks/useJoinEvent';
 import { useState } from 'react';
@@ -57,8 +57,20 @@ export default function EventCard({ event }: EventCardProps) {
         {/* Event Visual */}
         <div className="relative flex h-full items-center justify-center">
           <div className="text-center">
-            <div className="mb-3 text-6xl">
-              {event.status === 'active' ? '🔥' : event.status === 'upcoming' ? '📅' : '✅'}
+            <div className="mb-3 flex justify-center">
+              {event.status === 'active' ? (
+                <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                  <Flame className="h-8 w-8 text-white" />
+                </div>
+              ) : event.status === 'upcoming' ? (
+                <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                  <CalendarDays className="h-8 w-8 text-white" />
+                </div>
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                  <CheckCircle className="h-8 w-8 text-white" />
+                </div>
+              )}
             </div>
             <h3 className="text-2xl font-bold text-white mb-2">{event.name}</h3>
             <div className="inline-flex items-center gap-2 rounded-full bg-white/20 backdrop-blur-sm px-4 py-2 text-sm font-bold text-white shadow-lg">
@@ -153,7 +165,9 @@ export default function EventCard({ event }: EventCardProps) {
                 disabled={isLoading || joined}
                 className={`rounded-full bg-gradient-to-r ${getStatusColor()} px-8 py-3 text-sm font-bold text-white shadow-md transition-all hover:shadow-lg hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed`}
               >
-                {isLoading ? 'Joining...' : joined ? 'Joined ✓' : event.status === 'active' ? 'Join Now' : 'Register'}
+                {isLoading ? 'Joining...' : joined ? (
+                  <><Check className="inline h-4 w-4 mr-1" /> Joined</>
+                ) : event.status === 'active' ? 'Join Now' : 'Register'}
               </button>
             </>
           )}

@@ -16,7 +16,7 @@ const tabs = [
 
 export default function PreviewTabs({ activeTab, onTabChange }: PreviewTabsProps) {
   return (
-    <div className="px-4 pb-4">
+    <div className="px-6 pb-6">
       <p className="mb-3 text-center text-xs font-medium text-gray-500">Choose Category</p>
       <div className="grid grid-cols-4 gap-2">
         {tabs.map((tab) => {
@@ -28,7 +28,7 @@ export default function PreviewTabs({ activeTab, onTabChange }: PreviewTabsProps
               onClick={() => onTabChange(tab.name)}
               className={`flex flex-col items-center justify-center rounded-xl px-2 py-3 text-xs font-semibold transition-all ${
                 isActive
-                  ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-lg scale-105'
+                  ? 'bg-blue-500 text-white shadow-lg'
                   : 'bg-white text-gray-600 shadow-sm hover:shadow-md hover:bg-gray-50'
               }`}
             >

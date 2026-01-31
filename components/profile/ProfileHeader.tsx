@@ -1,6 +1,6 @@
 'use client';
 
-import { Settings, LogOut, User, Bell, Shield, HelpCircle } from 'lucide-react';
+import { Settings, LogOut, User, Bell, Shield, HelpCircle, X } from 'lucide-react';
 import { useState } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
 import { useRouter } from 'next/navigation';
@@ -56,15 +56,15 @@ export default function ProfileHeader() {
                   onClick={() => setShowSettings(false)}
                   className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition-all hover:bg-gray-200"
                 >
-                  ✕
+                  <X className="h-5 w-5" />
                 </button>
               </div>
 
               {/* User Info */}
               <div className="mb-6 rounded-xl bg-gradient-to-r from-blue-50 to-purple-50 p-4">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-500 text-xl">
-                    👤
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-500">
+                    <User className="h-6 w-6 text-white" />
                   </div>
                   <div>
                     <p className="font-semibold text-gray-900">
