@@ -3,6 +3,7 @@
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { Address, formatUnits } from 'viem';
 import { CONTRACTS, ABIS, TIER_NAMES } from '@/lib/contracts';
+import { requestFaucet } from '@/lib/api';
 import { useEffect } from 'react';
 
 export function useProfile(address?: Address) {
@@ -118,11 +119,21 @@ export function useProfile(address?: Address) {
 
   const registerProfile = async () => {
     try {
+      if (!address) {
+        return;
+      }
+
       if (hasProfile || hasProfileFallback) {
         console.warn('User already has profile!');
         return;
       }
-      
+
+      try {
+        await requestFaucet({ walletAddress: address });
+      } catch (error) {
+        console.error('Faucet request failed, continuing without subsidy:', error);
+      }
+
       register({
         address: CONTRACTS.ProfileNFT,
         abi: ABIS.ProfileNFT,

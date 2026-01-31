@@ -56,6 +56,16 @@ function ValidateContent() {
       return;
     }
 
+    const storedWallet = typeof window !== 'undefined' ? localStorage.getItem('runera_wallet') : null;
+    if (storedWallet && storedWallet.toLowerCase() !== address.toLowerCase()) {
+      console.warn('Wallet address mismatch with JWT session. Resetting token.');
+      localStorage.removeItem('runera_token');
+      localStorage.setItem('runera_wallet', address.toLowerCase());
+      alert('Wallet address changed.\n\nPlease login again to sync your session with the backend.');
+      router.push('/login');
+      return;
+    }
+
     // Check if JWT token exists
     const token = localStorage.getItem('runera_token');
     console.log('🔐 JWT Token check:', token ? '✅ Token exists' : '❌ No token');

@@ -1,20 +1,20 @@
 import { Address } from 'viem';
 
-// Contract Addresses (Update with actual deployed addresses)
 export const CONTRACTS = {
   ProfileNFT: (process.env.NEXT_PUBLIC_CONTRACT_PROFILE_NFT || '0x0000000000000000000000000000000000000000') as Address,
   CosmeticNFT: (process.env.NEXT_PUBLIC_CONTRACT_COSMETIC_NFT || '0x0000000000000000000000000000000000000000') as Address,
   AchievementNFT: (process.env.NEXT_PUBLIC_CONTRACT_ACHIEVEMENT_NFT || '0x0000000000000000000000000000000000000000') as Address,
   EventRegistry: (process.env.NEXT_PUBLIC_CONTRACT_EVENT_REGISTRY || '0x0000000000000000000000000000000000000000') as Address,
   Marketplace: (process.env.NEXT_PUBLIC_CONTRACT_MARKETPLACE || '0x0000000000000000000000000000000000000000') as Address,
+  AccessControl: (process.env.NEXT_PUBLIC_ACCESS_CONTROL_ADDRESS || '0x0000000000000000000000000000000000000000') as Address,
 } as const;
 
-// Import ABIs from ABI2 folder (updated ABIs from Foundry)
 import ProfileABI from '@/ABI2/RuneraProfileABI.json';
 import CosmeticABI from '@/ABI2/RuneraCosmeticNFTABI.json';
 import AchievementABI from '@/ABI2/RuneraAchievementABI.json';
 import EventABI from '@/ABI2/RuneraEventRegistryABI.json';
 import MarketplaceABI from '@/ABI2/RuneraMarketplaceABI.json';
+import AccessControlABI from '@/ABI2/RuneraAccessControlABI.json';
 
 export const ABIS = {
   ProfileNFT: ProfileABI,
@@ -22,6 +22,7 @@ export const ABIS = {
   AchievementNFT: AchievementABI,
   EventRegistry: EventABI,
   Marketplace: MarketplaceABI,
+  AccessControl: AccessControlABI,
 } as const;
 
 // Tier configuration (based on LEVEL, not distance)

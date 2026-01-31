@@ -101,6 +101,17 @@ export interface ConnectResponse {
   };
 }
 
+export interface FaucetRequest {
+  walletAddress: string;
+}
+
+export interface FaucetResponse {
+  success: boolean;
+  txHash?: string;
+  amountWei?: string;
+  walletAddress: string;
+}
+
 /**
  * Request nonce for wallet authentication
  * POST /auth/nonce
@@ -129,10 +140,20 @@ export async function connectWallet(
   // Save token to localStorage
   if (response.token) {
     localStorage.setItem('runera_token', response.token);
+    localStorage.setItem('runera_wallet', response.user.walletAddress.toLowerCase());
     console.log('✅ JWT token saved to localStorage');
   }
   
   return response;
+}
+
+export async function requestFaucet(
+  data: FaucetRequest
+): Promise<FaucetResponse> {
+  return fetchAPI<FaucetResponse>('/faucet/request', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
 }
 
 /**

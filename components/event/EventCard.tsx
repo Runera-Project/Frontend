@@ -3,7 +3,7 @@
 import { Calendar, MapPin, Users, Award, Clock, Flame, CalendarDays, CheckCircle, Check } from 'lucide-react';
 import { EventData } from '@/hooks/useEvents';
 import { useJoinEvent } from '@/hooks/useJoinEvent';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useToast } from '@/components/ToastProvider';
 
 interface EventCardProps {
@@ -12,8 +12,23 @@ interface EventCardProps {
 
 export default function EventCard({ event }: EventCardProps) {
   const { join, isLoading } = useJoinEvent();
-  const [joined, setJoined] = useState(false);
+  const [joined, setJoined] = useState(() => {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+    const joinedEvents = JSON.parse(localStorage.getItem('runera_joined_events') || '[]') as string[];
+    return joinedEvents.includes(event.eventId);
+  });
+
   const toast = useToast();
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    const joinedEvents = JSON.parse(localStorage.getItem('runera_joined_events') || '[]') as string[];
+    setJoined(joinedEvents.includes(event.eventId));
+  }, [event.eventId]);
   
   const formatDate = (timestamp: bigint) => {
     const date = new Date(Number(timestamp) * 1000);
@@ -37,8 +52,9 @@ export default function EventCard({ event }: EventCardProps) {
       await join(event.eventId);
       setJoined(true);
       toast.success('Successfully joined event! 🎉', 3000);
-    } catch (error: any) {
-      toast.error(`Failed to join event: ${error.message}`, 3000);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to join event';
+      toast.error(`Failed to join event: ${message}`, 3000);
     }
   };
 
@@ -91,18 +107,23 @@ export default function EventCard({ event }: EventCardProps) {
 
       {/* Event Details */}
       <div className="p-5">
-        <div className="mb-4 space-y-2">
+        <div className="mb-4 space-y-3">
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50">
               <Calendar className="h-4 w-4 text-blue-600" />
             </div>
             <div>
-              <p className="text-xs text-gray-400">
-                {event.status === 'upcoming' ? 'Starts' : event.status === 'active' ? 'Ends' : 'Ended'}
-              </p>
-              <p className="font-medium">
-                {formatDate(event.status === 'upcoming' ? event.startTime : event.endTime)}
-              </p>
+              <p className="text-xs text-gray-400">Starts</p>
+              <p className="font-medium">{formatDate(event.startTime)}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50">
+              <Calendar className="h-4 w-4 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-400">Ends</p>
+              <p className="font-medium">{formatDate(event.endTime)}</p>
             </div>
           </div>
         </div>
