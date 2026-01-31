@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Backend and Smart Contract (separate repos)
+/Backend/
+/SmartContract/
