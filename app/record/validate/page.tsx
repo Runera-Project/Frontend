@@ -167,22 +167,25 @@ function ValidateContent() {
         return;
       }
 
-      // Extract XP from response
-      let xpEarned = 0;
+      // Extract XP earned from this run
+      // Backend gives 100 XP per verified run (XP_PER_VERIFIED_RUN)
+      let xpEarned = 100; // Default XP per run
       
-      // Try different response structures
-      if (result.onchainSync?.stats?.xp) {
-        xpEarned = result.onchainSync.stats.xp;
-        console.log('✅ XP from onchainSync.stats.xp:', xpEarned);
-      } else if (result.run?.xpEarned) {
+      // If backend provides the XP earned for this specific run
+      if (result.run?.xpEarned) {
         xpEarned = result.run.xpEarned;
-        console.log('✅ XP from run.xpEarned:', xpEarned);
+        console.log('✅ XP earned from run:', xpEarned);
       } else if (result.xpEarned) {
         xpEarned = result.xpEarned;
-        console.log('✅ XP from xpEarned:', xpEarned);
+        console.log('✅ XP earned:', xpEarned);
       } else {
-        console.warn('⚠️ No XP found in response!');
-        console.warn('Response structure:', Object.keys(result));
+        // Fallback: Use default 100 XP
+        console.log('ℹ️ Using default XP per run:', xpEarned);
+      }
+      
+      // Log total XP for reference
+      if (result.onchainSync?.stats?.xp) {
+        console.log('📊 Total XP after this run:', result.onchainSync.stats.xp);
       }
       
       const runId = result.runId || result.run?.id || 'unknown';
@@ -312,23 +315,70 @@ function ValidateContent() {
       }
 
       // Update streak - increment if user ran today
-      const today = new Date().toDateString();
+      const today = new Date();
+      const todayStr = today.toDateString();
       const lastRunDate = localStorage.getItem('runera_last_run_date');
       
-      if (lastRunDate !== today) {
-        // New day, increment streak
-        const currentStreak = parseInt(localStorage.getItem('runera_streak') || '0');
-        const newStreak = currentStreak + 1;
-        localStorage.setItem('runera_streak', String(newStreak));
-        localStorage.setItem('runera_last_run_date', today);
-        console.log(`Streak updated: ${currentStreak} → ${newStreak}`);
+      // Check if this is a new day
+      if (lastRunDate !== todayStr) {
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toDateString();
+        
+        let currentStreak = parseInt(localStorage.getItem('runera_streak') || '0');
+        
+        // If last run was yesterday, increment streak
+        // If last run was today or earlier, start new streak
+        if (lastRunDate === yesterdayStr) {
+          // Consecutive day - increment
+          currentStreak += 1;
+        } else if (!lastRunDate || new Date(lastRunDate) < yesterday) {
+          // Streak broken or first run - start at 1
+          currentStreak = 1;
+        }
+        
+        // Update streak
+        localStorage.setItem('runera_streak', String(currentStreak));
+        localStorage.setItem('runera_last_run_date', todayStr);
+        
+        // Update longest streak if current is higher
+        const longestStreak = parseInt(localStorage.getItem('runera_longest_streak') || '0');
+        if (currentStreak > longestStreak) {
+          localStorage.setItem('runera_longest_streak', String(currentStreak));
+          console.log(`🔥 New longest streak record: ${currentStreak} days!`);
+        }
+        
+        console.log(`✅ Streak updated: ${currentStreak} days (Longest: ${Math.max(currentStreak, longestStreak)})`);
+      } else {
+        console.log(`ℹ️ Already ran today, streak unchanged`);
       }
+
+      // Save activity to localStorage for XP tracking
+      const activities = JSON.parse(localStorage.getItem('runera_activities') || '[]');
+      
+      // Use dummy data distance if test mode is enabled
+      const savedDistance = useDummyData ? 5.0 : parseFloat(distance);
+      const savedDuration = useDummyData ? 1800 : parseInt(time);
+      const savedPace = useDummyData ? '6:00' : pace;
+      
+      activities.push({
+        id: runId,
+        title,
+        distance: savedDistance, // Use dummy 5km if test mode
+        duration: savedDuration,
+        pace: savedPace,
+        timestamp: Date.now(),
+        xpEarned: xpEarned, // XP from backend
+        status: result.status,
+      });
+      localStorage.setItem('runera_activities', JSON.stringify(activities));
+      console.log(`💾 Activity saved to localStorage with ${xpEarned} XP and ${savedDistance}km distance`);
 
       // Show success message
       if (xpEarned > 0) {
-        alert(`Activity posted! +${xpEarned} XP earned! 🎉\n\nRun ID: ${runId}\nStatus: ${result.status}`);
+        alert(`Activity posted! +${xpEarned} XP earned! 🎉\n\nRun ID: ${runId}\nStatus: ${result.status}\nDistance: ${savedDistance}km`);
       } else {
-        alert(`Activity posted successfully! 🎉\n\nRun ID: ${runId}\nStatus: ${result.status}`);
+        alert(`Activity posted successfully! 🎉\n\nRun ID: ${runId}\nStatus: ${result.status}\nDistance: ${savedDistance}km`);
       }
 
       // Redirect to home
@@ -342,31 +392,52 @@ function ValidateContent() {
       // Fallback: Save to localStorage
       console.warn('Backend error, saving locally');
       
-      // Estimate XP based on distance (10 XP per km)
-      const estimatedXP = Math.round(parseFloat(distance) * 10);
+      // Use dummy data if test mode is enabled
+      const fallbackDistance = useDummyData ? 5.0 : parseFloat(distance);
+      const fallbackDuration = useDummyData ? 1800 : parseInt(time);
+      const fallbackPace = useDummyData ? '6:00' : pace;
+      
+      // Estimate XP based on distance (10 XP per km) or use 100 XP for dummy
+      const estimatedXP = useDummyData ? 100 : Math.round(fallbackDistance * 10);
       
       const activities = JSON.parse(localStorage.getItem('runera_activities') || '[]');
       activities.push({
         id: Date.now(),
         title,
-        distance: parseFloat(distance),
-        duration: parseInt(time),
-        pace,
+        distance: fallbackDistance,
+        duration: fallbackDuration,
+        pace: fallbackPace,
         timestamp: Date.now(),
         xpEarned: estimatedXP,
         gpsData: gpsData.length > 0 ? gpsData : undefined,
       });
       localStorage.setItem('runera_activities', JSON.stringify(activities));
       
-      // Update streak
-      const today = new Date().toDateString();
+      // Update streak (same logic as success case)
+      const today = new Date();
+      const todayStr = today.toDateString();
       const lastRunDate = localStorage.getItem('runera_last_run_date');
       
-      if (lastRunDate !== today) {
-        const currentStreak = parseInt(localStorage.getItem('runera_streak') || '0');
-        const newStreak = currentStreak + 1;
-        localStorage.setItem('runera_streak', String(newStreak));
-        localStorage.setItem('runera_last_run_date', today);
+      if (lastRunDate !== todayStr) {
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toDateString();
+        
+        let currentStreak = parseInt(localStorage.getItem('runera_streak') || '0');
+        
+        if (lastRunDate === yesterdayStr) {
+          currentStreak += 1;
+        } else if (!lastRunDate || new Date(lastRunDate) < yesterday) {
+          currentStreak = 1;
+        }
+        
+        localStorage.setItem('runera_streak', String(currentStreak));
+        localStorage.setItem('runera_last_run_date', todayStr);
+        
+        const longestStreak = parseInt(localStorage.getItem('runera_longest_streak') || '0');
+        if (currentStreak > longestStreak) {
+          localStorage.setItem('runera_longest_streak', String(currentStreak));
+        }
       }
       
       alert(`Activity saved locally! +${estimatedXP} XP earned!\n\nNote: Backend unavailable (${errorMsg})`);

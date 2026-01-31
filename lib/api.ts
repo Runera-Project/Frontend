@@ -55,12 +55,13 @@ async function fetchAPI<T>(
         errorMessage = response.statusText || errorMessage;
       }
       
+      // Create error with the message we built
       console.log('Final error message:', errorMessage);
       
-      const error = new Error(errorMessage);
-      (error as any).details = errorDetails;
-      (error as any).status = response.status;
-      throw error;
+      const err = new Error(errorMessage);
+      (err as any).details = errorDetails;
+      (err as any).status = response.status;
+      throw err;
     }
 
     return await response.json();

@@ -9,10 +9,14 @@ import AuthGuard from '@/components/AuthGuard';
 import { ProfileRegistration } from '@/components/ProfileRegistration';
 import { DebugProfile } from '@/components/DebugProfile';
 import { useJWTAuth } from '@/hooks/useJWTAuth';
+import WalletAddressDisplay from '@/components/WalletAddressDisplay';
 
 export default function Home() {
   const { address } = useAccount();
   const { isAuthenticating, isAuthenticated, error } = useJWTAuth();
+
+  // Always show wallet display if user is authenticated (embedded or external wallet)
+  const showWalletDisplay = true; // WalletAddressDisplay will handle checking internally
 
   return (
     <AuthGuard>
@@ -58,6 +62,12 @@ export default function Home() {
           )}
 
           <Header />
+          
+          {/* Wallet Address Display - Shows for all login methods */}
+          <div className="px-5 mb-5">
+            <WalletAddressDisplay />
+          </div>
+          
           <QuestCard />
           <RecentRun />
         </div>

@@ -134,9 +134,37 @@ export function useDailyQuest() {
     saveDailyProgress(dailySteps, dailyDistance, newDuration);
   };
 
-  // Get current streak from smart contract
-  const currentStreak = profile?.stats.currentStreak || 0;
-  const longestStreak = profile?.stats.longestStreak || 0;
+  // Get current streak from localStorage
+  const getCurrentStreak = (): number => {
+    if (typeof window === 'undefined') return 0;
+    
+    const lastRunDate = localStorage.getItem('runera_last_run_date');
+    const storedStreak = parseInt(localStorage.getItem('runera_streak') || '0');
+    
+    if (!lastRunDate) return 0;
+    
+    // Check if streak is still active
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    const lastRun = new Date(lastRunDate);
+    const todayStr = today.toDateString();
+    const yesterdayStr = yesterday.toDateString();
+    const lastRunStr = lastRun.toDateString();
+    
+    // Streak is active if last run was today or yesterday
+    if (lastRunStr === todayStr || lastRunStr === yesterdayStr) {
+      return storedStreak;
+    }
+    
+    // Streak broken - reset
+    localStorage.setItem('runera_streak', '0');
+    return 0;
+  };
+
+  const currentStreak = getCurrentStreak();
+  const longestStreak = parseInt(localStorage.getItem('runera_longest_streak') || '0');
 
   // Define daily quests
   const quests: DailyQuest[] = [

@@ -30,13 +30,12 @@ export default function Providers({ children }: { children: React.ReactNode }) {
           landingHeader: 'Welcome to Runera',
           loginMessage: 'Sign in to track your runs and earn rewards',
         },
-        // Login methods - Email, Google, Wallet
+        // Login methods - Email, Google, and Wallet
         loginMethods: ['email', 'google', 'wallet'],
-        // Embedded wallet configuration
+        // Embedded wallet configuration - Create for ALL users
         embeddedWallets: {
-          ethereum: {
-            createOnLogin: 'users-without-wallets',
-          },
+          createOnLogin: 'all-users', // Create embedded wallet for everyone (Google, Email, Wallet)
+          requireUserPasswordOnCreate: false, // Don't require password for embedded wallet
         },
         // Default chain - Base Sepolia Testnet
         defaultChain: baseSepolia,

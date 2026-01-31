@@ -10,6 +10,7 @@ import AchievementsSection from '@/components/profile/AchievementsSection';
 import BottomNavigation from '@/components/BottomNavigation';
 import AuthGuard from '@/components/AuthGuard';
 import { ProfileRegistration } from '@/components/ProfileRegistration';
+import WalletAddressDisplay from '@/components/WalletAddressDisplay';
 import { useEffect, useState } from 'react';
 
 export default function ProfilePage() {
@@ -130,6 +131,10 @@ export default function ProfilePage() {
                           bannerGradient={selectedBannerGradient}
                           profile={profileData}
                         />
+                        {/* Wallet Address Display - Works for all login methods */}
+                        <div className="px-5">
+                          <WalletAddressDisplay />
+                        </div>
                         <RankProgressCard profile={profileData} />
                         <StatsOverview profile={profileData} />
                         <AchievementsSection />
